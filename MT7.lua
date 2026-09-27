@@ -1,446 +1,292 @@
---[[
-    MT7 UI — Prototype v1
-    Interface de teste / demonstração
-
-    Inclui:
-    • Botão flutuante MT7 arrastável
-    • Menu abrir/fechar
-    • Abas
-    • Speed 1–500
-    • Slider + entrada manual
-    • 4 temas
-    • Egg ESP (visual/simulado)
-    • Auto Steal (visual/simulado)
-    • Fly / Tween / Go To Pet (controles simulados)
-    • Performance / FPS (indicador)
-    • Asset ID para imagem
-]]
+--// MT7 - Speed Booster TEST
+--// Para uso no seu próprio jogo/place
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
-local Player = Players.LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
+local player = Players.LocalPlayer
 
---------------------------------------------------
--- CONFIG
---------------------------------------------------
+local DEFAULT_SPEED = 16
+local MIN_SPEED = 1
+local MAX_SPEED = 500
 
-local Config = {
-    Speed = 100,
-    Theme = "Ocean",
-    ImageId = "",
-    AutoSteal = false,
-    EggESP = false,
-    ExpensiveOnly = false,
-    Fly = false,
-    Tween = false,
-    PetMove = false,
-    Performance = false
-}
+local speed = 100
+local enabled = false
 
-local Themes = {
-    Ocean = Color3.fromRGB(40, 140, 255),
-    Purple = Color3.fromRGB(150, 80, 255),
-    Crimson = Color3.fromRGB(235, 65, 75),
-    Emerald = Color3.fromRGB(45, 190, 120)
-}
+--// GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "MT7_SpeedTest"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
 
---------------------------------------------------
--- GUI
---------------------------------------------------
+--// Botão flutuante
+local openButton = Instance.new("TextButton")
+openButton.Size = UDim2.fromOffset(70, 70)
+openButton.Position = UDim2.new(0, 20, 0.5, -35)
+openButton.BackgroundColor3 = Color3.fromRGB(5, 5, 8)
+openButton.Text = "MT7"
+openButton.TextColor3 = Color3.fromRGB(0, 170, 255)
+openButton.TextSize = 22
+openButton.Font = Enum.Font.GothamBold
+openButton.Parent = gui
 
-local Gui = Instance.new("ScreenGui")
-Gui.Name = "MT7_UI"
-Gui.ResetOnSpawn = false
-Gui.Parent = PlayerGui
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(1, 0)
+buttonCorner.Parent = openButton
 
---------------------------------------------------
--- FLOATING BUTTON
---------------------------------------------------
+local buttonStroke = Instance.new("UIStroke")
+buttonStroke.Color = Color3.fromRGB(0, 170, 255)
+buttonStroke.Thickness = 2
+buttonStroke.Parent = openButton
 
-local Floating = Instance.new("TextButton")
-Floating.Name = "MT7Button"
-Floating.Size = UDim2.fromOffset(64, 64)
-Floating.Position = UDim2.new(0, 20, 0.5, -32)
-Floating.BackgroundColor3 = Themes[Config.Theme]
-Floating.Text = "MT7"
-Floating.TextColor3 = Color3.new(1, 1, 1)
-Floating.TextScaled = true
-Floating.Font = Enum.Font.GothamBold
-Floating.Parent = Gui
+--// Painel
+local panel = Instance.new("Frame")
+panel.Size = UDim2.fromOffset(330, 250)
+panel.Position = UDim2.new(0.5, -165, 0.5, -125)
+panel.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+panel.Visible = false
+panel.Parent = gui
 
-local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(1, 0)
-Corner.Parent = Floating
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 16)
+corner.Parent = panel
 
---------------------------------------------------
--- MAIN WINDOW
---------------------------------------------------
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(0, 170, 255)
+stroke.Thickness = 2
+stroke.Parent = panel
 
-local Main = Instance.new("Frame")
-Main.Name = "Main"
-Main.Size = UDim2.fromOffset(360, 470)
-Main.Position = UDim2.new(0.5, -180, 0.5, -235)
-Main.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-Main.Visible = false
-Main.Parent = Gui
+--// Título
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -20, 0, 45)
+title.Position = UDim2.fromOffset(10, 5)
+title.BackgroundTransparency = 1
+title.Text = "⚡ MT7 SPEED BOOSTER"
+title.TextColor3 = Color3.fromRGB(0, 170, 255)
+title.TextSize = 20
+title.Font = Enum.Font.GothamBold
+title.Parent = panel
 
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 14)
-MainCorner.Parent = Main
+--// Status
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1, -20, 0, 30)
+status.Position = UDim2.fromOffset(10, 50)
+status.BackgroundTransparency = 1
+status.Text = "Status: OFF"
+status.TextColor3 = Color3.fromRGB(255, 80, 80)
+status.TextSize = 16
+status.Font = Enum.Font.GothamBold
+status.Parent = panel
 
---------------------------------------------------
--- TITLE
---------------------------------------------------
+--// Campo de velocidade
+local speedBox = Instance.new("TextBox")
+speedBox.Size = UDim2.fromOffset(100, 40)
+speedBox.Position = UDim2.fromOffset(20, 90)
+speedBox.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+speedBox.Text = tostring(speed)
+speedBox.PlaceholderText = "Speed"
+speedBox.TextColor3 = Color3.new(1, 1, 1)
+speedBox.TextSize = 17
+speedBox.Font = Enum.Font.Gotham
+speedBox.ClearTextOnFocus = false
+speedBox.Parent = panel
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -20, 0, 45)
-Title.Position = UDim2.fromOffset(10, 5)
-Title.BackgroundTransparency = 1
-Title.Text = "MT7  •  TEST PANEL"
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.TextSize = 20
-Title.Font = Enum.Font.GothamBold
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = Main
+local boxCorner = Instance.new("UICorner")
+boxCorner.CornerRadius = UDim.new(0, 8)
+boxCorner.Parent = speedBox
 
---------------------------------------------------
--- CONTENT
---------------------------------------------------
+--// Slider
+local sliderBack = Instance.new("Frame")
+sliderBack.Size = UDim2.fromOffset(180, 10)
+sliderBack.Position = UDim2.fromOffset(135, 105)
+sliderBack.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+sliderBack.Parent = panel
 
-local Content = Instance.new("ScrollingFrame")
-Content.Size = UDim2.new(1, -20, 1, -60)
-Content.Position = UDim2.fromOffset(10, 55)
-Content.BackgroundTransparency = 1
-Content.ScrollBarThickness = 4
-Content.CanvasSize = UDim2.new()
-Content.Parent = Main
+local sliderCorner = Instance.new("UICorner")
+sliderCorner.CornerRadius = UDim.new(1, 0)
+sliderCorner.Parent = sliderBack
 
-local Layout = Instance.new("UIListLayout")
-Layout.Padding = UDim.new(0, 8)
-Layout.Parent = Content
+local sliderFill = Instance.new("Frame")
+sliderFill.Size = UDim2.new((speed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0, 1, 0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+sliderFill.Parent = sliderBack
 
---------------------------------------------------
--- HELPERS
---------------------------------------------------
+local fillCorner = Instance.new("UICorner")
+fillCorner.CornerRadius = UDim.new(1, 0)
+fillCorner.Parent = sliderFill
 
-local function AddButton(text, callback)
-    local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(1, 0, 0, 42)
-    Button.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
-    Button.Text = text
-    Button.TextColor3 = Color3.new(1, 1, 1)
-    Button.TextSize = 15
-    Button.Font = Enum.Font.GothamMedium
-    Button.Parent = Content
+--// Botão ON/OFF
+local toggle = Instance.new("TextButton")
+toggle.Size = UDim2.fromOffset(290, 45)
+toggle.Position = UDim2.fromOffset(20, 145)
+toggle.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+toggle.Text = "⚡ ATIVAR SPEED"
+toggle.TextColor3 = Color3.fromRGB(0, 170, 255)
+toggle.TextSize = 17
+toggle.Font = Enum.Font.GothamBold
+toggle.Parent = panel
 
-    local C = Instance.new("UICorner")
-    C.CornerRadius = UDim.new(0, 8)
-    C.Parent = Button
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 10)
+toggleCorner.Parent = toggle
 
-    Button.MouseButton1Click:Connect(callback)
+--// Reset
+local reset = Instance.new("TextButton")
+reset.Size = UDim2.fromOffset(290, 35)
+reset.Position = UDim2.fromOffset(20, 198)
+reset.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+reset.Text = "↩ Resetar para 16"
+reset.TextColor3 = Color3.new(1, 1, 1)
+reset.TextSize = 14
+reset.Font = Enum.Font.Gotham
+reset.Parent = panel
 
-    return Button
+local resetCorner = Instance.new("UICorner")
+resetCorner.CornerRadius = UDim.new(0, 8)
+resetCorner.Parent = reset
+
+--// Aplica a velocidade
+local function applySpeed()
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+
+	if humanoid then
+		humanoid.WalkSpeed = enabled and speed or DEFAULT_SPEED
+	end
 end
 
-local function AddSection(text)
-    local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, 0, 0, 30)
-    Label.BackgroundTransparency = 1
-    Label.Text = text
-    Label.TextColor3 = Themes[Config.Theme]
-    Label.TextSize = 16
-    Label.Font = Enum.Font.GothamBold
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.Parent = Content
+--// Atualiza valor
+local function setSpeed(value)
+	value = tonumber(value)
+
+	if not value then
+		speedBox.Text = tostring(speed)
+		return
+	end
+
+	speed = math.clamp(math.floor(value), MIN_SPEED, MAX_SPEED)
+	speedBox.Text = tostring(speed)
+
+	local percent = (speed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED)
+	sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+
+	applySpeed()
 end
 
---------------------------------------------------
--- AUTO STEAL
---------------------------------------------------
-
-AddSection("🥚 AUTO STEAL")
-
-local AutoButton
-
-AutoButton = AddButton("Auto Steal: OFF", function()
-    Config.AutoSteal = not Config.AutoSteal
-
-    AutoButton.Text =
-        "Auto Steal: " ..
-        (Config.AutoSteal and "ON" or "OFF")
+--// Campo numérico
+speedBox.FocusLost:Connect(function()
+	setSpeed(speedBox.Text)
 end)
 
---------------------------------------------------
--- EGG ESP
---------------------------------------------------
+--// Slider mobile
+local draggingSlider = false
 
-AddSection("👁️ EGG ESP")
+local function updateSlider(inputX)
+	local relative = math.clamp(
+		(inputX - sliderBack.AbsolutePosition.X) / sliderBack.AbsoluteSize.X,
+		0,
+		1
+	)
 
-local ESPButton
-
-ESPButton = AddButton("Egg ESP: OFF", function()
-    Config.EggESP = not Config.EggESP
-
-    ESPButton.Text =
-        "Egg ESP: " ..
-        (Config.EggESP and "ON" or "OFF")
-end)
-
-local ExpensiveButton
-
-ExpensiveButton = AddButton("Somente caros: OFF", function()
-    Config.ExpensiveOnly = not Config.ExpensiveOnly
-
-    ExpensiveButton.Text =
-        "Somente caros: " ..
-        (Config.ExpensiveOnly and "ON" or "OFF")
-end)
-
---------------------------------------------------
--- SPEED
---------------------------------------------------
-
-AddSection("⚡ SPEED")
-
-local SpeedLabel = Instance.new("TextLabel")
-SpeedLabel.Size = UDim2.new(1, 0, 0, 35)
-SpeedLabel.BackgroundTransparency = 1
-SpeedLabel.Text = "Velocidade: 100"
-SpeedLabel.TextColor3 = Color3.new(1, 1, 1)
-SpeedLabel.TextSize = 15
-SpeedLabel.Font = Enum.Font.GothamMedium
-SpeedLabel.Parent = Content
-
-local SpeedBox = Instance.new("TextBox")
-SpeedBox.Size = UDim2.new(1, 0, 0, 42)
-SpeedBox.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
-SpeedBox.Text = "100"
-SpeedBox.PlaceholderText = "Digite 1–500"
-SpeedBox.TextColor3 = Color3.new(1, 1, 1)
-SpeedBox.TextSize = 15
-SpeedBox.Font = Enum.Font.Gotham
-SpeedBox.ClearTextOnFocus = false
-SpeedBox.Parent = Content
-
-local BoxCorner = Instance.new("UICorner")
-BoxCorner.CornerRadius = UDim.new(0, 8)
-BoxCorner.Parent = SpeedBox
-
-SpeedBox.FocusLost:Connect(function()
-    local Value = tonumber(SpeedBox.Text)
-
-    if not Value then
-        Value = Config.Speed
-    end
-
-    Value = math.clamp(math.floor(Value), 1, 500)
-
-    Config.Speed = Value
-    SpeedBox.Text = tostring(Value)
-    SpeedLabel.Text = "Velocidade: " .. Value
-end)
-
---------------------------------------------------
--- MOVEMENT CONTROLS
---------------------------------------------------
-
-AddSection("🐾 PET / MOVIMENTO")
-
-local FlyButton
-FlyButton = AddButton("Fly: OFF", function()
-    Config.Fly = not Config.Fly
-    FlyButton.Text = "Fly: " .. (Config.Fly and "ON" or "OFF")
-end)
-
-local TweenButton
-TweenButton = AddButton("Tween: OFF", function()
-    Config.Tween = not Config.Tween
-    TweenButton.Text = "Tween: " .. (Config.Tween and "ON" or "OFF")
-end)
-
-local PetButton
-PetButton = AddButton("Go To Pet: OFF", function()
-    Config.PetMove = not Config.PetMove
-    PetButton.Text =
-        "Go To Pet: " ..
-        (Config.PetMove and "ON" or "OFF")
-end)
-
---------------------------------------------------
--- PERFORMANCE
---------------------------------------------------
-
-AddSection("🚀 PERFORMANCE")
-
-local PerformanceButton
-
-PerformanceButton = AddButton("Performance Mode: OFF", function()
-    Config.Performance = not Config.Performance
-
-    PerformanceButton.Text =
-        "Performance Mode: " ..
-        (Config.Performance and "ON" or "OFF")
-end)
-
---------------------------------------------------
--- THEMES
---------------------------------------------------
-
-AddSection("🎨 TEMAS")
-
-local function ApplyTheme(Name)
-    Config.Theme = Name
-
-    local Color = Themes[Name]
-
-    Floating.BackgroundColor3 = Color
-    Title.TextColor3 = Color
-
-    for _, Object in ipairs(Content:GetChildren()) do
-        if Object:IsA("TextLabel") and Object.Text ~= "" then
-            if Object.Text:find("🥚")
-                or Object.Text:find("👁️")
-                or Object.Text:find("⚡")
-                or Object.Text:find("🐾")
-                or Object.Text:find("🚀")
-                or Object.Text:find("🎨") then
-
-                Object.TextColor3 = Color
-            end
-        end
-    end
+	local value = MIN_SPEED + ((MAX_SPEED - MIN_SPEED) * relative)
+	setSpeed(value)
 end
 
-AddButton("🔵 Ocean", function()
-    ApplyTheme("Ocean")
+sliderBack.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		draggingSlider = true
+		updateSlider(input.Position.X)
+	end
 end)
 
-AddButton("🟣 Purple", function()
-    ApplyTheme("Purple")
+sliderBack.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		draggingSlider = false
+	end
 end)
 
-AddButton("🔴 Crimson", function()
-    ApplyTheme("Crimson")
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+	if draggingSlider then
+		if input.UserInputType == Enum.UserInputType.MouseMovement
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			updateSlider(input.Position.X)
+		end
+	end
 end)
 
-AddButton("🟢 Emerald", function()
-    ApplyTheme("Emerald")
+--// Toggle
+toggle.Activated:Connect(function()
+	enabled = not enabled
+
+	if enabled then
+		status.Text = "Status: ON"
+		status.TextColor3 = Color3.fromRGB(80, 255, 120)
+		toggle.Text = "🟢 SPEED ATIVADA"
+	else
+		status.Text = "Status: OFF"
+		status.TextColor3 = Color3.fromRGB(255, 80, 80)
+		toggle.Text = "⚡ ATIVAR SPEED"
+	end
+
+	applySpeed()
 end)
 
---------------------------------------------------
--- IMAGE ID
---------------------------------------------------
-
-AddSection("🖼️ IMAGEM DO PAINEL")
-
-local ImageBox = Instance.new("TextBox")
-ImageBox.Size = UDim2.new(1, 0, 0, 42)
-ImageBox.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
-ImageBox.Text = ""
-ImageBox.PlaceholderText = "Asset ID da imagem"
-ImageBox.TextColor3 = Color3.new(1, 1, 1)
-ImageBox.TextSize = 14
-ImageBox.Font = Enum.Font.Gotham
-ImageBox.ClearTextOnFocus = false
-ImageBox.Parent = Content
-
-local ImageCorner = Instance.new("UICorner")
-ImageCorner.CornerRadius = UDim.new(0, 8)
-ImageCorner.Parent = ImageBox
-
-AddButton("Aplicar imagem", function()
-    local ID = tonumber(ImageBox.Text)
-
-    if ID then
-        Config.ImageId = tostring(ID)
-        print("MT7 Image ID:", Config.ImageId)
-    end
+--// Reset
+reset.Activated:Connect(function()
+	setSpeed(DEFAULT_SPEED)
 end)
 
---------------------------------------------------
--- FLOATING BUTTON
---------------------------------------------------
-
-Floating.MouseButton1Click:Connect(function()
-    Main.Visible = not Main.Visible
+--// Respawn
+player.CharacterAdded:Connect(function()
+	task.wait(0.5)
+	applySpeed()
 end)
 
---------------------------------------------------
--- SIMPLE DRAG SYSTEM
---------------------------------------------------
+--// Animação abrir/fechar
+local scale = Instance.new("UIScale")
+scale.Scale = 0.85
+scale.Parent = panel
 
-local UIS = game:GetService("UserInputService")
+local opened = false
 
-local dragging = false
-local dragStart
-local startPos
+local function openPanel()
+	opened = true
+	panel.Visible = true
+	scale.Scale = 0.85
 
-Floating.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch
-        or input.UserInputType == Enum.UserInputType.MouseButton1 then
+	TweenService:Create(
+		scale,
+		TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{Scale = 1}
+	):Play()
+end
 
-        dragging = true
-        dragStart = input.Position
-        startPos = Floating.Position
+local function closePanel()
+	opened = false
 
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
+	local tween = TweenService:Create(
+		scale,
+		TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{Scale = 0.85}
+	)
+
+	tween:Play()
+	tween.Completed:Connect(function()
+		if not opened then
+			panel.Visible = false
+		end
+	end)
+end
+
+openButton.Activated:Connect(function()
+	if opened then
+		closePanel()
+	else
+		openPanel()
+	end
 end)
-
-UIS.InputChanged:Connect(function(input)
-    if dragging then
-        local Delta = input.Position - dragStart
-
-        Floating.Position = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + Delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + Delta.Y
-        )
-    end
-end)
-
---------------------------------------------------
--- FPS DISPLAY
---------------------------------------------------
-
-local FPS = 0
-local Frames = 0
-local Last = os.clock()
-
-local FPSLabel = Instance.new("TextLabel")
-FPSLabel.Size = UDim2.new(1, 0, 0, 30)
-FPSLabel.BackgroundTransparency = 1
-FPSLabel.Text = "FPS: --"
-FPSLabel.TextColor3 = Color3.new(1, 1, 1)
-FPSLabel.TextSize = 14
-FPSLabel.Font = Enum.Font.Gotham
-FPSLabel.Parent = Content
-
-RunService.RenderStepped:Connect(function()
-    Frames += 1
-
-    local Now = os.clock()
-
-    if Now - Last >= 1 then
-        FPS = Frames
-        Frames = 0
-        Last = Now
-
-        FPSLabel.Text = "FPS: " .. FPS
-    end
-end)
-
---------------------------------------------------
--- INITIALIZE
---------------------------------------------------
-
-ApplyTheme("Ocean")
-
-print("MT7 UI carregada com sucesso.")
